@@ -24,11 +24,12 @@ Process::Process(ProcessDetails details, uint64_t current_time)
     turn_time = 0;
     wait_time = 0;
     cpu_time = 0;
-    remain_time = 0;
+    total_time = 0;
     for (i = 0; i < num_bursts; i+=2)
     {
-        remain_time += burst_times[i];
+        total_time += burst_times[i];
     }
+    remain_time = total_time;
 }
 
 Process::~Process()
@@ -86,6 +87,11 @@ double Process::getCpuTime() const
     return (double)cpu_time / 1000.0;
 }
 
+double Process::getTotalRunTime() const
+{
+    return (double)remain_time / 1000.0;
+}
+
 double Process::getRemainingTime() const
 {
     return (double)remain_time / 1000.0;
@@ -129,22 +135,4 @@ void Process::updateProcess(uint64_t current_time)
 void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 {
     burst_times[burst_idx] = new_time;
-}
-
-
-// Comparator methods: used in std::list sort() method
-// No comparator needed for FCFS or RR (ready queue never sorted)
-
-// SJF - comparator for sorting read queue based on shortest remaining CPU time
-bool SjfComparator::operator ()(const Process *p1, const Process *p2)
-{
-    // your code here!
-    return false; // change this!
-}
-
-// PP - comparator for sorting read queue based on priority
-bool PpComparator::operator ()(const Process *p1, const Process *p2)
-{
-    // your code here!
-    return false; // change this!
 }
