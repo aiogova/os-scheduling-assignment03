@@ -130,6 +130,66 @@ void Process::updateProcess(uint64_t current_time)
 {
     // use `current_time` to update turnaround time, wait time, burst times, 
     // cpu time, and remaining time
+
+    uint64_t elapsed = current_time - burst_start_time;
+    burst_start_time = current_time;
+
+    // update turnaround time (total time since launch)
+    turn_time = current_time - launch_time;
+
+    if (state == State::Running)
+    {
+        // update cpu time
+        cpu_time += elapsed;
+
+        // update burst times
+        burst_times[current_burst] -= elapsed;
+
+        // update remaining time
+        remain_time -= elapsed;
+
+        // if the current burst finished
+        if (burst_times[current_burst] <= 0)
+        {
+            // move on to the next burst
+            current_burst++;
+
+            // if more bursts remain, the process moves to IO
+            if (current_burst < num_bursts)
+            {
+                state = State::IO;
+                burst_start_time = current_time;
+                core = -1;
+            }
+            // else, no more bursts remain, which means the process has terminated
+            else
+            {
+                state = State::Terminated;
+                core = -1;
+            }
+        }
+    }
+    // if the process is currently in an IO burst
+    else if (state == State::IO)
+    {
+        // update the burst times
+        burst_times[current_burst] -= elapsed;
+
+        // if the IO burst has finished
+        if (burst_times[current_burst] <= 0)
+        {
+            // move on to the next burst
+            current_burst++;
+
+            // set the state to Ready (ready to be put back on the CPU)
+            state = State::Ready;
+        }
+    }
+    // if waiting in the ready queue
+    else if (state == State::Ready)
+    {
+        wait_time += elapsed;
+    }
 }
 
 void Process::updateBurstTime(int burst_idx, uint32_t new_time)
