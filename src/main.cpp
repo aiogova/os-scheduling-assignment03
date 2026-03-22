@@ -78,27 +78,58 @@ int main(int argc, char *argv[])
     initscr();
     while (!(shared_data->all_terminated))
     {
+        if (shared_data->algorithm == ScheduleAlgorithm::FCFS) {
+            // Do the following:
+            //   - Get current time
+            uint64_t current_time = currentTime();
+            shared_data->queue_mutex.lock();
+            //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
+            for (Process* currentProcess : processes) {
+                if (currentProcess->getState() == Process::State::NotStarted && currentProcess->getStartTime() <= (current_time - start)) {
+                    currentProcess->setState(Process::State::Ready, current_time);
+                    // FCFS: just push at the end
+                    shared_data->ready_queue.push_back(currentProcess); 
+                }   
+
+                //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
+                if (currentProcess->getState() == Process::State::IO) {
+                    currentProcess->updateProcess(currentTime());
+
+                    if (currentProcess->getState() == Process::State::Ready) {
+                        shared_data->ready_queue.push_back(currentProcess);
+                    }
+                }
+            }
+                
+            //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
+            shared_data->queue_mutex.unlock();
+
+        } else if (shared_data->algorithm == ScheduleAlgorithm::SJF) {
+            // Do the following:
+            //   - Get current time
+            //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue    
+            //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
+            //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
+            //     - NOTE: ensure processes are inserted into the ready queue at the proper position based on algorithm
+            //   - Determine if all processes are in the terminated state
+        }
+
+        //   - Determine if all processes are in the terminated state
+        shared_data->all_terminated = true;
+        for (Process* currentProcess : processes) {
+            if (currentProcess->getState() != Process::State::Terminated) {
+                shared_data->all_terminated = false;
+                break;
+            }
+        }
+        
         // Do the following:
         //   - Get current time
-        uint64_t current_time = currentTime();
-        shared_data->queue_mutex.lock();
-        //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
-            for (i = 0; i < config->num_processes; i++) {
-                // processes[i].getState();
-            }
+        //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue    
         //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
-            for (i = 0; i < config->num_processes; i++) {
-                
-            }
         //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
         //     - NOTE: ensure processes are inserted into the ready queue at the proper position based on algorithm
         //   - Determine if all processes are in the terminated state
-            for (i = 0; i < config->num_processes; i++) {
-                
-            }
-        //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
-        shared_data->queue_mutex.unlock();
-
 
         // Maybe simply print progress bar for all procs?
         printProcessOutput(processes);
@@ -159,6 +190,8 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             //      until one of the following:
             currentProcess->setState(Process::State::Running, currentTime());
             currentProcess->setCpuCore(core_id);
+            currentProcess->setBurstStartTime(currentTime());
+
             Process::State state;
             while (true) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -171,18 +204,11 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                 if (state == Process::State::IO || state == Process::State::Terminated) {
                     break;
                 }
-            }
 
-            state = currentProcess->getState();
-
-            if (state == Process::State::IO) {
-                currentProcess->setCpuCore(-1);
+                //      - Interrupted (RR time slice has elapsed or process preempted by higher priority process)
+                //   - Place the process back in the appropriate queue
             }
-            else if (state == Process::State::Terminated) {
-                currentProcess->setCpuCore(-1);
-            }
-            //      - Interrupted (RR time slice has elapsed or process preempted by higher priority process)
-            //   - Place the process back in the appropriate queue
+            
             //      - I/O queue if CPU burst finished (and process not finished) -- no actual queue, simply set state to IO
 
             //      - Terminated if CPU burst finished and no more bursts remain -- set state to Terminated

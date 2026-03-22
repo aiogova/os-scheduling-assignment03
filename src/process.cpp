@@ -89,7 +89,7 @@ double Process::getCpuTime() const
 
 double Process::getTotalRunTime() const
 {
-    return (double)remain_time / 1000.0;
+    return (double)total_time / 1000.0;
 }
 
 double Process::getRemainingTime() const
@@ -132,6 +132,12 @@ void Process::updateProcess(uint64_t current_time)
     // cpu time, and remaining time
 
     uint64_t elapsed = current_time - burst_start_time;
+
+    // prevent burst_times from ever becoming "negative"
+    if (elapsed >= burst_times[current_burst]) {
+        elapsed = burst_times[current_burst];
+    }
+
     burst_start_time = current_time;
 
     // update turnaround time (total time since launch)
