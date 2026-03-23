@@ -198,19 +198,19 @@ int main(int argc, char *argv[])
     double cpu_utilization = total_cpu_time / (total_simulation_time * num_cores);
 
     // calculate throughput
-    std::vector<double> finish_times;
+    std::vector<double> finish_times; // stores the time the processes finished
 
     for (Process* p : processes) {
-        finish_times.push_back(p->getTurnaroundTime());
+        finish_times.push_back((p->getFinishTime() - start) / 1000.0); // how much time after the simulation started did the process finish
     }
 
-    std::sort(finish_times.begin(), finish_times.end());
+    std::sort(finish_times.begin(), finish_times.end()); // sort the list so the processes with the quickest finish times are first
 
     int n = finish_times.size();
     int half = n / 2;
 
-    double first_half_end = finish_times[half - 1];
-    double last_finish = finish_times[n - 1];
+    double first_half_end = finish_times[half - 1]; // time when first half finished
+    double last_finish = finish_times[n - 1]; // time when all processes finished
 
     double throughput_first = half / first_half_end;
     double throughput_second = (n - half) / (last_finish - first_half_end);

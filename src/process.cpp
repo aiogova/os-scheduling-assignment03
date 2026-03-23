@@ -18,6 +18,7 @@ Process::Process(ProcessDetails details, uint64_t current_time)
     if (state == State::Ready)
     {
         launch_time = current_time;
+        finish_time = 0;
     }
     is_interrupted = false;
     core = -1;
@@ -172,6 +173,7 @@ void Process::updateProcess(uint64_t current_time)
             {
                 state = State::Terminated;
                 core = -1;
+                finish_time = current_time;
             }
         }
     }
@@ -201,4 +203,9 @@ void Process::updateProcess(uint64_t current_time)
 void Process::updateBurstTime(int burst_idx, uint32_t new_time)
 {
     burst_times[burst_idx] = new_time;
+}
+
+uint64_t Process::getFinishTime() const
+{
+    return finish_time;
 }
