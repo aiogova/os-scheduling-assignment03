@@ -148,15 +148,66 @@ int main(int argc, char *argv[])
         schedule_threads[i].join();
     }
 
+    uint64_t end = currentTime();
+
+    // calculate cpu utilization
+    double total_cpu_time = 0.0;
+
+    for (Process* currentProcess : processes) {
+        total_cpu_time += currentProcess->getCpuTime(); // in seconds
+    }
+
+    double total_simulation_time = (end - start) / 1000.0; // ms to seconds
+
+    double cpu_utilization = total_cpu_time / (total_simulation_time * num_cores);
+
+    // calculate throughput
+    std::vector<double> finish_times;
+
+    for (Process* p : processes) {
+        finish_times.push_back(p->getTurnaroundTime());
+    }
+
+    std::sort(finish_times.begin(), finish_times.end());
+
+    int n = finish_times.size();
+    int half = n / 2;
+
+    double first_half_end = finish_times[half - 1];
+    double last_finish = finish_times[n - 1];
+
+    double throughput_first = half / first_half_end;
+    double throughput_second = (n - half) / (last_finish - first_half_end);
+    double throughput_total = n / last_finish;
+
+    // calculate turnaround time
+    double total_turnaround = 0.0;
+
+    for (Process* p : processes) {
+        total_turnaround += p->getTurnaroundTime();
+    }
+
+    double avg_turnaround = total_turnaround / processes.size();
+
     // print final statistics (use `printw()` for each print, and `refresh()` after all prints)
+    printw("Simulation Complete!\n\n");
     //  - CPU utilization
+    printw("\nCPU Utilization: %.2f%%\n", cpu_utilization * 100);
     //  - Throughput
+    printw("\nThroughput:\n");
     //     - Average for first 50% of processes finished
+    printw(" First 50%%: %.2f processes/sec\n", throughput_first);
     //     - Average for second 50% of processes finished
+    printw(" Second 50%%: %.2f processes/sec\n", throughput_second);
     //     - Overall average
+    printw(" Overall: %.2f processes/sec\n", throughput_total);
     //  - Average turnaround time
+    printw("\nAverage Turnaround Time: %.2f seconds\n", avg_turnaround);
     //  - Average waiting time
 
+    refresh();
+    printw("\n\nPress any key to exit...");
+    getch();
 
     // Clean up before quitting program
     processes.clear();
