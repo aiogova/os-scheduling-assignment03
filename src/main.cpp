@@ -60,7 +60,22 @@ int main(int argc, char *argv[])
         // If process should be launched immediately, add to ready queue
         if (p->getState() == Process::State::Ready)
         {
-            shared_data->ready_queue.push_back(p);
+            if (shared_data->algorithm == ScheduleAlgorithm::FCFS) {
+                shared_data->ready_queue.push_back(p);
+            }
+            else if (shared_data->algorithm == ScheduleAlgorithm::SJF) {
+
+                auto it = shared_data->ready_queue.begin();
+
+                while (it != shared_data->ready_queue.end()) {
+                    if ((*it)->getRemainingTime() > p->getRemainingTime()) {
+                        break;
+                    }
+                    ++it;
+                }
+
+                shared_data->ready_queue.insert(it, p);
+            }
         }
     }
 
@@ -91,16 +106,44 @@ int main(int argc, char *argv[])
                 if (shared_data->algorithm == ScheduleAlgorithm::FCFS) { 
                     shared_data->ready_queue.push_back(currentProcess); 
                 }
+                // SJF
+                else if (shared_data->algorithm == ScheduleAlgorithm::SJF) {
+
+                    auto it = shared_data->ready_queue.begin();
+
+                    while (it != shared_data->ready_queue.end()) {
+                        if ((*it)->getRemainingTime() > currentProcess->getRemainingTime()) {
+                            break;
+                        }
+                        ++it;
+                    }
+
+                    shared_data->ready_queue.insert(it, currentProcess);
+                }
             }   
 
             //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
             if (currentProcess->getState() == Process::State::IO) {
-                currentProcess->updateProcess(currentTime());
+                currentProcess->updateProcess(current_time);
 
                 if (currentProcess->getState() == Process::State::Ready) {
                     // FCFS: just push at the end
                     if (shared_data->algorithm == ScheduleAlgorithm::FCFS) { 
                         shared_data->ready_queue.push_back(currentProcess);
+                    }
+                    // SJF
+                    else if (shared_data->algorithm == ScheduleAlgorithm::SJF) {
+
+                        auto it = shared_data->ready_queue.begin();
+
+                        while (it != shared_data->ready_queue.end()) {
+                            if ((*it)->getRemainingTime() > currentProcess->getRemainingTime()) {
+                                break;
+                            }
+                            ++it;
+                        }
+
+                        shared_data->ready_queue.insert(it, currentProcess);
                     }
                 }
             }
@@ -121,14 +164,6 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-        
-        // Do the following:
-        //   - Get current time
-        //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue    
-        //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
-        //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
-        //     - NOTE: ensure processes are inserted into the ready queue at the proper position based on algorithm
-        //   - Determine if all processes are in the terminated state
 
         // Maybe simply print progress bar for all procs?
         printProcessOutput(processes);
