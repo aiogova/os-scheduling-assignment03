@@ -251,6 +251,10 @@ int main(int argc, char *argv[])
     processes.clear();
     endwin();
 
+    // clean up heap memory
+    delete[] schedule_threads;
+    delete shared_data;
+
     return 0;
 }
 
