@@ -174,7 +174,9 @@ int main(int argc, char *argv[])
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
         // clear outout
-        erase();
+        if (!shared_data->all_terminated) {
+            erase();
+        }
     }
 
 
@@ -226,7 +228,7 @@ int main(int argc, char *argv[])
     double avg_turnaround = total_turnaround / processes.size();
 
     // print final statistics (use `printw()` for each print, and `refresh()` after all prints)
-    printw("Simulation Complete!\n\n");
+    printw("\nSimulation Complete!\n\n");
     //  - CPU utilization
     printw("\nCPU Utilization: %.2f%%\n", cpu_utilization * 100);
     //  - Throughput
