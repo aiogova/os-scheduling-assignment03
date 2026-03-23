@@ -60,9 +60,11 @@ int main(int argc, char *argv[])
         // If process should be launched immediately, add to ready queue
         if (p->getState() == Process::State::Ready)
         {
+            // FCFS
             if (shared_data->algorithm == ScheduleAlgorithm::FCFS) {
                 shared_data->ready_queue.push_back(p);
             }
+            // SJF
             else if (shared_data->algorithm == ScheduleAlgorithm::SJF) {
 
                 auto it = shared_data->ready_queue.begin();
@@ -93,11 +95,11 @@ int main(int argc, char *argv[])
     initscr();
     while (!(shared_data->all_terminated))
     {
-    
         // Do the following:
         //   - Get current time
         uint64_t current_time = currentTime();
         shared_data->queue_mutex.lock();
+
         //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
         for (Process* currentProcess : processes) {
             if (currentProcess->getState() == Process::State::NotStarted && currentProcess->getStartTime() <= (current_time - start)) {
@@ -294,10 +296,10 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                 //   - Place the process back in the appropriate queue
             }
             
-            //      - I/O queue if CPU burst finished (and process not finished) -- no actual queue, simply set state to IO
-
-            //      - Terminated if CPU burst finished and no more bursts remain -- set state to Terminated
+            //      - I/O queue if CPU burst finished (and process not finished) -- no actual queue, simply set state to IO (done in updateProcess in process.cpp)
+            //      - Terminated if CPU burst finished and no more bursts remain -- set state to Terminated (done in updateProcess in process.cpp)
             //      - *Ready queue if interrupted (be sure to modify the CPU burst time to now reflect the remaining time)
+            
             //   - Wait context switching save time
             std::this_thread::sleep_for(std::chrono::milliseconds(shared_data->context_switch));
         }
