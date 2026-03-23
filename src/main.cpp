@@ -211,6 +211,11 @@ int main(int argc, char *argv[])
     int n = finish_times.size();
     int half = n / 2;
 
+    // edge case (don't want index of -1 later)
+    if (half == 0) {
+        half = 1;
+    }
+
     double first_half_end = finish_times[half - 1]; // time when first half finished
     double last_finish = finish_times[n - 1]; // time when all processes finished
 
