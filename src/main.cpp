@@ -78,41 +78,40 @@ int main(int argc, char *argv[])
     initscr();
     while (!(shared_data->all_terminated))
     {
-        if (shared_data->algorithm == ScheduleAlgorithm::FCFS) {
-            // Do the following:
-            //   - Get current time
-            uint64_t current_time = currentTime();
-            shared_data->queue_mutex.lock();
-            //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
-            for (Process* currentProcess : processes) {
-                if (currentProcess->getState() == Process::State::NotStarted && currentProcess->getStartTime() <= (current_time - start)) {
-                    currentProcess->setState(Process::State::Ready, current_time);
-                    // FCFS: just push at the end
+    
+        // Do the following:
+        //   - Get current time
+        uint64_t current_time = currentTime();
+        shared_data->queue_mutex.lock();
+        //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue
+        for (Process* currentProcess : processes) {
+            if (currentProcess->getState() == Process::State::NotStarted && currentProcess->getStartTime() <= (current_time - start)) {
+                currentProcess->setState(Process::State::Ready, current_time);
+                // FCFS: just push at the end
+                if (shared_data->algorithm == ScheduleAlgorithm::FCFS) { 
                     shared_data->ready_queue.push_back(currentProcess); 
-                }   
+                }
+            }   
 
-                //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
-                if (currentProcess->getState() == Process::State::IO) {
-                    currentProcess->updateProcess(currentTime());
+            //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
+            if (currentProcess->getState() == Process::State::IO) {
+                currentProcess->updateProcess(currentTime());
 
-                    if (currentProcess->getState() == Process::State::Ready) {
+                if (currentProcess->getState() == Process::State::Ready) {
+                    // FCFS: just push at the end
+                    if (shared_data->algorithm == ScheduleAlgorithm::FCFS) { 
                         shared_data->ready_queue.push_back(currentProcess);
                     }
                 }
             }
-                
-            //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
-            shared_data->queue_mutex.unlock();
 
-        } else if (shared_data->algorithm == ScheduleAlgorithm::SJF) {
-            // Do the following:
-            //   - Get current time
-            //   - *Check if any processes need to move from NotStarted to Ready (based on elapsed time), and if so put that process in the ready queue    
-            //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
             //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
             //     - NOTE: ensure processes are inserted into the ready queue at the proper position based on algorithm
-            //   - Determine if all processes are in the terminated state
+
         }
+            
+        //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
+        shared_data->queue_mutex.unlock();
 
         //   - Determine if all processes are in the terminated state
         shared_data->all_terminated = true;
