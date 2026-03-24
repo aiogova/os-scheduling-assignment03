@@ -60,8 +60,9 @@ int main(int argc, char *argv[])
         // If process should be launched immediately, add to ready queue
         if (p->getState() == Process::State::Ready)
         {
-            // FCFS
-            if (shared_data->algorithm == ScheduleAlgorithm::FCFS) {
+            // FCFS or RR: push to back
+            if (shared_data->algorithm == ScheduleAlgorithm::FCFS ||
+                shared_data->algorithm == ScheduleAlgorithm::RR) {
                 shared_data->ready_queue.push_back(p);
             }
             // SJF
@@ -76,6 +77,17 @@ int main(int argc, char *argv[])
                     ++it;
                 }
 
+                shared_data->ready_queue.insert(it, p);
+            }
+            // PP: priority-sorted insertion (lower number = higher priority, FCFS for ties)
+            else if (shared_data->algorithm == ScheduleAlgorithm::PP) {
+                auto it = shared_data->ready_queue.begin();
+                while (it != shared_data->ready_queue.end()) {
+                    if ((*it)->getPriority() > p->getPriority()) {
+                        break;
+                    }
+                    ++it;
+                }
                 shared_data->ready_queue.insert(it, p);
             }
         }
@@ -104,8 +116,9 @@ int main(int argc, char *argv[])
         for (Process* currentProcess : processes) {
             if (currentProcess->getState() == Process::State::NotStarted && currentProcess->getStartTime() <= (current_time - start)) {
                 currentProcess->setState(Process::State::Ready, current_time);
-                // FCFS: just push at the end
-                if (shared_data->algorithm == ScheduleAlgorithm::FCFS) { 
+                // FCFS or RR: push to back
+                if (shared_data->algorithm == ScheduleAlgorithm::FCFS ||
+                    shared_data->algorithm == ScheduleAlgorithm::RR) { 
                     shared_data->ready_queue.push_back(currentProcess); 
                 }
                 // SJF
@@ -122,6 +135,29 @@ int main(int argc, char *argv[])
 
                     shared_data->ready_queue.insert(it, currentProcess);
                 }
+                // PP: priority-sorted insertion + preemption check
+                else if (shared_data->algorithm == ScheduleAlgorithm::PP) {
+                    auto it = shared_data->ready_queue.begin();
+                    while (it != shared_data->ready_queue.end()) {
+                        if ((*it)->getPriority() > currentProcess->getPriority()) {
+                            break;
+                        }
+                        ++it;
+                    }
+                    shared_data->ready_queue.insert(it, currentProcess);
+                    // Preempt the lowest-priority running process if it has lower priority
+                    Process* to_preempt = nullptr;
+                    for (Process* p : processes) {
+                        if (p->getState() == Process::State::Running) {
+                            if (to_preempt == nullptr || p->getPriority() > to_preempt->getPriority()) {
+                                to_preempt = p;
+                            }
+                        }
+                    }
+                    if (to_preempt != nullptr && to_preempt->getPriority() > currentProcess->getPriority()) {
+                        to_preempt->interrupt();
+                    }
+                }
             }   
 
             //   - *Check if any processes have finished their I/O burst, and if so put that process back in the ready queue
@@ -129,8 +165,9 @@ int main(int argc, char *argv[])
                 currentProcess->updateProcess(current_time);
 
                 if (currentProcess->getState() == Process::State::Ready) {
-                    // FCFS: just push at the end
-                    if (shared_data->algorithm == ScheduleAlgorithm::FCFS) { 
+                    // FCFS or RR: push to back
+                    if (shared_data->algorithm == ScheduleAlgorithm::FCFS ||
+                        shared_data->algorithm == ScheduleAlgorithm::RR) { 
                         shared_data->ready_queue.push_back(currentProcess);
                     }
                     // SJF
@@ -146,6 +183,29 @@ int main(int argc, char *argv[])
                         }
 
                         shared_data->ready_queue.insert(it, currentProcess);
+                    }
+                    // PP: priority-sorted insertion + preemption check
+                    else if (shared_data->algorithm == ScheduleAlgorithm::PP) {
+                        auto it = shared_data->ready_queue.begin();
+                        while (it != shared_data->ready_queue.end()) {
+                            if ((*it)->getPriority() > currentProcess->getPriority()) {
+                                break;
+                            }
+                            ++it;
+                        }
+                        shared_data->ready_queue.insert(it, currentProcess);
+                        // Preempt the lowest-priority running process if it has lower priority
+                        Process* to_preempt = nullptr;
+                        for (Process* p : processes) {
+                            if (p->getState() == Process::State::Running) {
+                                if (to_preempt == nullptr || p->getPriority() > to_preempt->getPriority()) {
+                                    to_preempt = p;
+                                }
+                            }
+                        }
+                        if (to_preempt != nullptr && to_preempt->getPriority() > currentProcess->getPriority()) {
+                            to_preempt->interrupt();
+                        }
                     }
                 }
             }
@@ -291,6 +351,7 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
             currentProcess->setBurstStartTime(currentTime());
 
             Process::State state;
+            uint64_t slice_start = currentTime();
             while (true) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
@@ -303,16 +364,43 @@ void coreRunProcesses(uint8_t core_id, SchedulerData *shared_data)
                     break;
                 }
 
-                //      - Interrupted (RR time slice has elapsed or process preempted by higher priority process)
-                //   - Place the process back in the appropriate queue
+                //      - RR: time slice has elapsed
+                if (shared_data->algorithm == ScheduleAlgorithm::RR &&
+                    (currentTime() - slice_start) >= shared_data->time_slice) {
+                    break;
+                }
+
+                //      - PP: preempted by higher-priority process (signaled by main thread)
+                if (shared_data->algorithm == ScheduleAlgorithm::PP &&
+                    currentProcess->isInterrupted()) {
+                    currentProcess->interruptHandled();
+                    break;
+                }
             }
-            
-            //      - I/O queue if CPU burst finished (and process not finished) -- no actual queue, simply set state to IO (done in updateProcess in process.cpp)
-            //      - Terminated if CPU burst finished and no more bursts remain -- set state to Terminated (done in updateProcess in process.cpp)
-            //      - *Ready queue if interrupted (be sure to modify the CPU burst time to now reflect the remaining time)
-            
+
             //   - Wait context switching save time
             std::this_thread::sleep_for(std::chrono::milliseconds(shared_data->context_switch));
+
+            //      - *Ready queue if interrupted (burst time already reflects remaining time via updateProcess)
+            if (state == Process::State::Running) {
+                currentProcess->setState(Process::State::Ready, currentTime());
+                currentProcess->setCpuCore(-1);
+                shared_data->queue_mutex.lock();
+                if (shared_data->algorithm == ScheduleAlgorithm::RR) {
+                    shared_data->ready_queue.push_back(currentProcess);
+                }
+                else if (shared_data->algorithm == ScheduleAlgorithm::PP) {
+                    auto it = shared_data->ready_queue.begin();
+                    while (it != shared_data->ready_queue.end()) {
+                        if ((*it)->getPriority() > currentProcess->getPriority()) {
+                            break;
+                        }
+                        ++it;
+                    }
+                    shared_data->ready_queue.insert(it, currentProcess);
+                }
+                shared_data->queue_mutex.unlock();
+            }
         }
         
         //  - IF READY QUEUE WAS EMPTY
