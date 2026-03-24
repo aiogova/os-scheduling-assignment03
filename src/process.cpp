@@ -22,6 +22,7 @@ Process::Process(ProcessDetails details, uint64_t current_time)
     }
     is_interrupted = false;
     core = -1;
+    burst_start_time = current_time;
     turn_time = 0;
     wait_time = 0;
     cpu_time = 0;
@@ -108,6 +109,10 @@ void Process::setState(State new_state, uint64_t current_time)
     if (state == State::NotStarted && new_state == State::Ready)
     {
         launch_time = current_time;
+    }
+    if (new_state == State::Ready)
+    {
+        burst_start_time = current_time;
     }
     state = new_state;
 }

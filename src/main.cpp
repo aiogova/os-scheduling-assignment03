@@ -213,6 +213,11 @@ int main(int argc, char *argv[])
             //   - *Check if any running process need to be interrupted (RR time slice expires or newly ready process has higher priority)
             //     - NOTE: ensure processes are inserted into the ready queue at the proper position based on algorithm
 
+            // Accumulate wait time for processes sitting in the ready queue
+            if (currentProcess->getState() == Process::State::Ready) {
+                currentProcess->updateProcess(current_time);
+            }
+
         }
             
         //   - * = accesses shared data (ready queue), so be sure to use proper synchronization
@@ -307,6 +312,12 @@ int main(int argc, char *argv[])
     //  - Average turnaround time
     printw("\nAverage Turnaround Time: %.2f seconds\n", avg_turnaround);
     //  - Average waiting time
+    double total_wait_time = 0.0;
+    for (Process* p : processes) {
+        total_wait_time += p->getWaitTime();
+    }
+    double avg_wait_time = total_wait_time / processes.size();
+    printw("\nAverage Wait Time: %.2f seconds\n", avg_wait_time);
 
     refresh();
     printw("\n\nPress any key to exit...");
