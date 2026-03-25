@@ -285,7 +285,14 @@ int main(int argc, char *argv[])
     double last_finish = finish_times[n - 1]; // time when all processes finished
 
     double throughput_first = half / first_half_end;
-    double throughput_second = (n - half) / (last_finish - first_half_end);
+    double throughput_second;
+    double second_interval = last_finish - first_half_end;
+    // fix division by zero bug
+    if (second_interval == 0) {
+        throughput_second = 0.0;
+    } else {
+        throughput_second = (n - half) / second_interval;
+    }
     double throughput_total = n / last_finish;
 
     // calculate turnaround time

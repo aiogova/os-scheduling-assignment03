@@ -196,6 +196,7 @@ void Process::updateProcess(uint64_t current_time)
 
             // set the state to Ready (ready to be put back on the CPU)
             state = State::Ready;
+            burst_start_time = current_time;
         }
     }
     // if waiting in the ready queue
