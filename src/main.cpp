@@ -242,6 +242,7 @@ int main(int argc, char *argv[])
         if (!shared_data->all_terminated) {
             erase();
         }
+        
     }
 
 
@@ -304,38 +305,42 @@ int main(int argc, char *argv[])
 
     double avg_turnaround = total_turnaround / processes.size();
 
-    // print final statistics (use `printw()` for each print, and `refresh()` after all prints)
-    printw("\nSimulation Complete!\n\n");
-    //  - CPU utilization
-    printw("\nCPU Utilization: %.2f%%\n", cpu_utilization * 100);
-    //  - Throughput
-    printw("\nThroughput:\n");
-    //     - Average for first 50% of processes finished
-    printw(" First 50%%: %.2f processes/sec\n", throughput_first);
-    //     - Average for second 50% of processes finished
-    printw(" Second 50%%: %.2f processes/sec\n", throughput_second);
-    //     - Overall average
-    printw(" Overall: %.2f processes/sec\n", throughput_total);
-    //  - Average turnaround time
-    printw("\nAverage Turnaround Time: %.2f seconds\n", avg_turnaround);
-    //  - Average waiting time
+    // calculate waiting time
     double total_wait_time = 0.0;
     for (Process* p : processes) {
         total_wait_time += p->getWaitTime();
     }
     double avg_wait_time = total_wait_time / processes.size();
-    printw("\nAverage Wait Time: %.2f seconds\n", avg_wait_time);
-
-    refresh();
-    printw("\n\nPress any key to exit...");
-    getch();
-
-    // Clean up before quitting program
-    processes.clear();
+   
     endwin();
 
-    // clean up heap memory
+    // print final statistics 
+    std::cout << "\nSimulation Complete!\n\n";
+    //  - CPU utilization
+    std::cout << "CPU Utilization: " << cpu_utilization * 100 << "%\n\n";
+    //  - Throughput
+    std::cout << "Throughput:\n";
+    //     - Average for first 50% of processes finished
+    std::cout << " First 50%: " << throughput_first << " processes/sec\n";
+    //     - Average for second 50% of processes finished
+    std::cout << " Second 50%: " << throughput_second << " processes/sec\n";
+    //     - Overall average
+    std::cout << " Overall: " << throughput_total << " processes/sec\n\n";
+    //  - Average turnaround time
+    std::cout << "Average Turnaround Time: " << avg_turnaround << " seconds\n\n";
+    //  - Average waiting time
+    std::cout << "Average Wait Time: " << avg_wait_time << " seconds\n\n";
+
+
+    // Clean up before quitting program
+    for (Process* p : processes) {
+        delete p;
+    }
+
+    processes.clear();
+    
     delete[] schedule_threads;
+
     delete shared_data;
 
     return 0;
