@@ -2,13 +2,7 @@ CXX= g++
 CXXFLAGS= -std=c++14
 
 INCLUDE= -I./include
-
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-    LIB= -lncurses -lpthread
-else
-    LIB= -lncursesw -lpthread
-endif
+LIB= -lncursesw -lpthread
 
 SRCDIR= src
 OBJDIR= obj
